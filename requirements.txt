@@ -1,0 +1,10 @@
+anthropic
+streamlit
+fastapi
+uvicorn[standard]
+chromadb
+sentence-transformers
+httpx
+beautifulsoup4
+pdfplumber
+python-dotenv

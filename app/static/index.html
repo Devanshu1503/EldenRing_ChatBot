@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Convergence Mod Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 110%, #1c0a00 0%, #0d0400 35%, #060200 70%, #020100 100%);
+      min-height: 100vh;
+      font-family: 'Crimson Text', Georgia, serif;
+      color: #D4B896;
+      overflow: hidden;
+    }
+
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* ── Panel ─────────────────────────────── */
+    .chat-panel {
+      width: 100%;
+      max-width: 840px;
+      height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      background: rgba(5, 2, 1, 0.80);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(200, 168, 75, 0.22);
+      border-radius: 18px;
+      box-shadow:
+        0 0 0 1px rgba(200, 168, 75, 0.04),
+        0 0 80px rgba(200, 168, 75, 0.05),
+        0 32px 80px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 220, 120, 0.07);
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 28px 18px;
+      border-bottom: 1px solid rgba(200, 168, 75, 0.13);
+      background: linear-gradient(180deg, rgba(200, 168, 75, 0.05) 0%, transparent 100%);
+      flex-shrink: 0;
+    }
+
+    .header-emblem {
+      font-size: 28px;
+      line-height: 1;
+      filter: drop-shadow(0 0 12px rgba(200, 168, 75, 0.6));
+    }
+
+    .chat-title {
+      font-family: 'Cinzel', serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #F0DC90 0%, #C8A84B 55%, #8B6A14 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .chat-subtitle {
+      font-size: 12px;
+      color: #5A4530;
+      letter-spacing: 2px;
+      margin-top: 3px;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      margin-left: auto;
+    }
+
+    .clear-btn {
+      background: transparent;
+      border: 1px solid rgba(200, 168, 75, 0.2);
+      color: rgba(200, 168, 75, 0.4);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .clear-btn:hover {
+      border-color: rgba(200, 168, 75, 0.5);
+      color: rgba(200, 168, 75, 0.8);
+      background: rgba(200, 168, 75, 0.05);
+    }
+
+    /* ── Messages ─────────────────────────────── */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      scroll-behavior: smooth;
+    }
+
+    .messages::-webkit-scrollbar { width: 3px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb {
+      background: rgba(200, 168, 75, 0.25);
+      border-radius: 2px;
+    }
+
+    /* Welcome state */
+    .welcome {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      gap: 16px;
+      color: rgba(200, 168, 75, 0.28);
+    }
+    .welcome-rune {
+      font-size: 48px;
+      line-height: 1;
+      filter: drop-shadow(0 0 20px rgba(200, 168, 75, 0.3));
+      animation: pulse 3s ease-in-out infinite;
+    }
+    .welcome p {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      letter-spacing: 2px;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    /* Message rows */
+    .message {
+      display: flex;
+      gap: 10px;
+      animation: msgIn 0.25s ease;
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user  { justify-content: flex-end; }
+    .message.assistant { justify-content: flex-start; }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .message.assistant .avatar {
+      background: rgba(200, 168, 75, 0.1);
+      border: 1px solid rgba(200, 168, 75, 0.2);
+    }
+
+    .bubble {
+      max-width: 72%;
+      padding: 13px 17px;
+      border-radius: 14px;
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .message.user .bubble {
+      background: linear-gradient(135deg, rgba(200, 168, 75, 0.18), rgba(139, 106, 20, 0.12));
+      border: 1px solid rgba(200, 168, 75, 0.30);
+      color: #EDD98A;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .bubble {
+      background: rgba(12, 7, 2, 0.72);
+      border: 1px solid rgba(200, 168, 75, 0.10);
+      color: #C8B090;
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Markdown inside bubbles */
+    .bubble p { margin: 5px 0; }
+    .bubble p:first-child { margin-top: 0; }
+    .bubble p:last-child  { margin-bottom: 0; }
+    .bubble strong, .bubble b { color: #E8D080; font-weight: 600; }
+    .bubble em { color: #C0A870; font-style: italic; }
+    .bubble h1, .bubble h2, .bubble h3 {
+      font-family: 'Cinzel', serif;
+      color: #C8A84B;
+      margin: 14px 0 6px;
+      font-size: 15px;
+      letter-spacing: 1px;
+    }
+    .bubble h1:first-child, .bubble h2:first-child, .bubble h3:first-child { margin-top: 0; }
+    .bubble ul, .bubble ol { padding-left: 18px; margin: 6px 0; }
+    .bubble li { margin: 3px 0; }
+    .bubble hr {
+      border: none;
+      border-top: 1px solid rgba(200, 168, 75, 0.18);
+      margin: 10px 0;
+    }
+    .bubble code {
+      background: rgba(200, 168, 75, 0.09);
+      border: 1px solid rgba(200, 168, 75, 0.15);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      color: #D4B050;
+    }
+    .bubble blockquote {
+      border-left: 3px solid rgba(200, 168, 75, 0.4);
+      padding-left: 12px;
+      color: #9A8060;
+      font-style: italic;
+      margin: 8px 0;
+    }
+
+    /* Typing indicator */
+    .typing {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 13px 17px;
+      background: rgba(12, 7, 2, 0.72);
+      border: 1px solid rgba(200, 168, 75, 0.10);
+      border-radius: 14px;
+      border-bottom-left-radius: 4px;
+      width: fit-content;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      background: rgba(200, 168, 75, 0.55);
+      border-radius: 50%;
+      animation: dotBounce 1.3s infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.15s; }
+    .dot:nth-child(3) { animation-delay: 0.30s; }
+    @keyframes dotBounce {
+      0%, 60%, 100% { transform: translateY(0);   opacity: 0.5; }
+      30%            { transform: translateY(-7px); opacity: 1;   }
+    }
+
+    /* ── Input area ─────────────────────────────── */
+    .input-area {
+      padding: 16px 28px 20px;
+      border-top: 1px solid rgba(200, 168, 75, 0.10);
+      background: linear-gradient(0deg, rgba(200, 168, 75, 0.025) 0%, transparent 100%);
+      flex-shrink: 0;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    #input {
+      flex: 1;
+      background: rgba(10, 5, 1, 0.85);
+      border: 1px solid rgba(200, 168, 75, 0.18);
+      border-radius: 10px;
+      padding: 12px 15px;
+      color: #D4B896;
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 15px;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      min-height: 48px;
+      max-height: 130px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      overflow-y: auto;
+    }
+    #input:focus {
+      border-color: rgba(200, 168, 75, 0.42);
+      box-shadow: 0 0 0 3px rgba(200, 168, 75, 0.06);
+    }
+    #input::placeholder { color: rgba(200, 168, 75, 0.22); }
+
+    #send-btn {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      background: linear-gradient(140deg, #C8A84B 0%, #8B6A14 100%);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      box-shadow: 0 2px 12px rgba(200, 168, 75, 0.2);
+    }
+    #send-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(200, 168, 75, 0.35);
+    }
+    #send-btn:active { transform: translateY(0); }
+    #send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+    #send-btn svg { fill: #0a0500; width: 20px; height: 20px; }
+
+    .input-hint {
+      font-size: 11px;
+      color: rgba(200, 168, 75, 0.18);
+      margin-top: 7px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Divider label ─────────────────────────────── */
+    .day-divider {
+      text-align: center;
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: rgba(200, 168, 75, 0.2);
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="app">
+  <div class="chat-panel">
+
+    <header class="chat-header">
+      <div class="header-emblem">⚔</div>
+      <div>
+        <div class="chat-title">Convergence Mod Guide</div>
+        <div class="chat-subtitle">Elden Ring · The Convergence Overhaul</div>
+      </div>
+      <div class="header-right">
+        <button class="clear-btn" onclick="clearChat()">New Session</button>
+      </div>
+    </header>
+
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-rune">✦</div>
+        <p>Speak, Tarnished.<br/>I shall guide you through the Convergence.</p>
+      </div>
+    </div>
+
+    <footer class="input-area">
+      <div class="input-row">
+        <textarea id="input" placeholder="Ask about builds, walkthroughs, weapons, quests..." rows="1"></textarea>
+        <button id="send-btn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
+    </footer>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- THREE.JS PARTICLE BACKGROUND                           -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 0, 90);
+
+  // Sprite texture: radial glow
+  function makeSprite(innerColor, outerColor, size = 64) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    g.addColorStop(0,   innerColor);
+    g.addColorStop(0.4, outerColor);
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    return new THREE.CanvasTexture(c);
+  }
+
+  const texEmber = makeSprite('rgba(255,230,120,1)',  'rgba(220,110,20,0.5)');
+  const texOrb   = makeSprite('rgba(255,245,180,0.9)','rgba(200,140,30,0.15)', 128);
+
+  // Particle layer factory
+  function makeLayer(count, spread, yRange, speedY, speedDrift, sizeRange, opacity, tex) {
+    const geo  = new THREE.BufferGeometry();
+    const pos  = new Float32Array(count * 3);
+    const meta = []; // {vy, vx, vz, phase}
+
+    for (let i = 0; i < count; i++) {
+      pos[i*3]   = (Math.random() - 0.5) * spread.x;
+      pos[i*3+1] = (Math.random() - 0.5) * spread.y;
+      pos[i*3+2] = (Math.random() - 0.5) * spread.z;
+      meta.push({
+        vy: speedY[0] + Math.random() * (speedY[1] - speedY[0]),
+        vx: (Math.random() - 0.5) * speedDrift,
+        vz: (Math.random() - 0.5) * speedDrift * 0.5,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+    const mat = new THREE.PointsMaterial({
+      size: sizeRange[0] + Math.random() * (sizeRange[1] - sizeRange[0]),
+      map: tex,
+      transparent: true,
+      opacity,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+
+    // vary sizes per particle via scale on individual points isn't native;
+    // use multiple point objects with different sizes instead
+    const pts = new THREE.Points(geo, mat);
+    scene.add(pts);
+    return { pts, geo, meta, spread, yRange };
+  }
+
+  // Layer 1: background haze — many tiny, dim, slow
+  const layers = [
+    makeLayer(1800, {x:220,y:160,z:120}, [-80,80], [0.008,0.022], 0.006, [0.6,1.0],  0.22, texEmber),
+    makeLayer( 700, {x:180,y:140,z: 80}, [-70,70], [0.018,0.045], 0.012, [1.2,2.2],  0.40, texEmber),
+    makeLayer( 200, {x:120,y:100,z: 40}, [-50,50], [0.030,0.070], 0.020, [2.5,4.5],  0.55, texEmber),
+    makeLayer(  30, {x: 80,y: 60,z: 20}, [-30,30], [0.005,0.015], 0.003, [8.0,18.0], 0.18, texOrb  ),
+  ];
+
+  let t = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    t += 0.006;
+
+    layers.forEach(({ geo, meta, spread, yRange }) => {
+      const pos = geo.attributes.position.array;
+      for (let i = 0; i < meta.length; i++) {
+        const m = meta[i];
+        pos[i*3]   += m.vx + Math.sin(t + m.phase) * 0.008;
+        pos[i*3+1] += m.vy;
+        pos[i*3+2] += m.vz;
+
+        if (pos[i*3+1] > yRange[1]) {
+          pos[i*3+1] = yRange[0];
+          pos[i*3]   = (Math.random() - 0.5) * spread.x;
+          pos[i*3+2] = (Math.random() - 0.5) * spread.z;
+        }
+      }
+      geo.attributes.position.needsUpdate = true;
+    });
+
+    // Very gentle camera sway for parallax depth
+    camera.position.x = Math.sin(t * 0.08) * 4;
+    camera.position.y = Math.sin(t * 0.05) * 2.5;
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- CHAT LOGIC                                             -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script>
+  marked.setOptions({ breaks: true, gfm: true });
+
+  let history = [];
+  let busy    = false;
+
+  const messagesEl = document.getElementById('messages');
+  const inputEl    = document.getElementById('input');
+  const sendBtn    = document.getElementById('send-btn');
+
+  // Auto-resize textarea
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 130) + 'px';
+  });
+
+  // Enter to send
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!busy) sendMessage();
+    }
+  });
+
+  function scrollBottom() {
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+  }
+
+  function removeWelcome() {
+    const w = document.getElementById('welcome');
+    if (w) w.remove();
+  }
+
+  function appendMessage(role, html) {
+    removeWelcome();
+    const row = document.createElement('div');
+    row.className = `message ${role}`;
+
+    if (role === 'assistant') {
+      const av = document.createElement('div');
+      av.className = 'avatar';
+      av.textContent = '✦';
+      row.appendChild(av);
+    }
+
+    const bub = document.createElement('div');
+    bub.className = 'bubble';
+    bub.innerHTML  = html;
+    row.appendChild(bub);
+
+    if (role === 'user') {
+      const av = document.createElement('div');
+      av.className = 'avatar';
+      av.textContent = '🧑';
+      row.appendChild(av);
+    }
+
+    messagesEl.appendChild(row);
+    scrollBottom();
+    return bub;
+  }
+
+  function showTyping() {
+    removeWelcome();
+    const row = document.createElement('div');
+    row.className = 'message assistant';
+    row.id = 'typing-row';
+
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    av.textContent = '✦';
+    row.appendChild(av);
+
+    const ind = document.createElement('div');
+    ind.className = 'typing';
+    ind.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+    row.appendChild(ind);
+
+    messagesEl.appendChild(row);
+    scrollBottom();
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing-row');
+    if (t) t.remove();
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text || busy) return;
+
+    busy = true;
+    sendBtn.disabled = true;
+
+    appendMessage('user', escapeHtml(text));
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+
+    showTyping();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history })
+      });
+      const data = await res.json();
+      const reply = data.reply || data.error || 'Something went wrong.';
+
+      history.push({ role: 'user',      content: text  });
+      history.push({ role: 'assistant', content: reply });
+      if (history.length > 20) history = history.slice(-20);
+
+      removeTyping();
+      appendMessage('assistant', marked.parse(reply));
+    } catch (err) {
+      removeTyping();
+      appendMessage('assistant', '<em>Connection error. Is the server running?</em>');
+    }
+
+    busy = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+
+  function clearChat() {
+    history = [];
+    saveHistory([]);  // wipe server-side too
+    messagesEl.innerHTML = `
+      <div class="welcome" id="welcome">
+        <div class="welcome-rune">✦</div>
+        <p>Speak, Tarnished.<br/>I shall guide you through the Convergence.</p>
+      </div>`;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  inputEl.focus();
+</script>
+</body>
+</html>
