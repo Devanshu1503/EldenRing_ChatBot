@@ -36,7 +36,10 @@ def _get_collection():
 def _get_claude():
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        api_key = os.environ.get("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY is not set in environment variables")
+        _client = anthropic.Anthropic(api_key=api_key)
     return _client
 
 

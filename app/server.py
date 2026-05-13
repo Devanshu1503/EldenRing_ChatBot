@@ -13,6 +13,11 @@ from chat import ask
 
 app = FastAPI()
 
+@app.on_event("startup")
+async def startup():
+    key = os.environ.get("ANTHROPIC_API_KEY", "NOT_FOUND")
+    print(f"[startup] ANTHROPIC_API_KEY present: {key != 'NOT_FOUND'}, length: {len(key)}")
+
 class ChatRequest(BaseModel):
     message: str
     history: list[dict] = []
